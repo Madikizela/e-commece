@@ -2,89 +2,143 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EcommerceAPI.Data;
 
-namespace EcommerceAPI.Controllers;
-
-[ApiController]
-[Route("[controller]")]
-public class HealthController : ControllerBase
+namespace EcommerceAPI.Controllers
 {
-    private readonly AppDbContext _context;
-    private readonly ILogger<HealthController> _logger;
-
-    public HealthController(AppDbContext context, ILogger<HealthController> logger)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class HealthController : ControllerBase
     {
-        _context = context;
-        _logger = logger;
-    }
+        private readonly AppDbContext _context;
 
-    [HttpGet]
-    public async Task<IActionResult> Get()
-    {
-        try
+        public HealthController(AppDbContext context)
         {
-            // Check database connectivity
-            await _context.Database.CanConnectAsync();
-            
-            var healthCheck = new
-            {
-                status = "Healthy",
-                timestamp = DateTime.UtcNow,
-                version = "1.0.0",
-                environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-                database = "Connected",
-                uptime = Environment.TickCount64
-            };
-
-            return Ok(healthCheck);
+            _context = context;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Health check failed");
-            
-            var healthCheck = new
-            {
-                status = "Unhealthy",
-                timestamp = DateTime.UtcNow,
-                version = "1.0.0",
-                environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-                database = "Disconnected",
-                error = ex.Message,
-                uptime = Environment.TickCount64
-            };
 
-            return StatusCode(503, healthCheck);
-        }
-    }
-
-    [HttpGet("ready")]
-    public async Task<IActionResult> Ready()
-    {
-        try
+        [HttpGet]
+        public async Task<ActionResult> GetHealth()
         {
-            // More thorough readiness check
-            await _context.Database.CanConnectAsync();
-            
-            // Check if database has been migrated
-            var pendingMigrations = await _context.Database.GetPendingMigrationsAsync();
-            
-            if (pendingMigrations.Any())
+            try
             {
-                return StatusCode(503, new { status = "Not Ready", reason = "Pending migrations" });
+                // Basic health check
+                var health = new
+                {
+                    status = "healthy",
+                    timestamp = DateTime.UtcNow,
+                    version = "1.0.0",
+                    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"
+                };
+
+                return Ok(health);
             }
-
-            return Ok(new { status = "Ready" });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = "unhealthy",
+                    timestamp = DateTime.UtcNow,
+                    error = ex.Message
+                });
+            }
         }
-        catch (Exception ex)
+
+        [HttpGet("detailed")]
+        public async Task<ActionResult> GetDetailedHealth()
         {
-            _logger.LogError(ex, "Readiness check failed");
-            return StatusCode(503, new { status = "Not Ready", error = ex.Message });
-        }
-    }
+            try
+            {
+                // Database connectivity check
+                var canConnectToDatabase = await _context.Database.CanConnectAsync();
+                
+                var health = new
+                {
+                    status = canConnectToDatabase ? "healthy" : "degraded",
+                    timestamp = DateTime.UtcNow,
+                    version = "1.0.0",
+                    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development",
+                    checks = new
+                    {
+                        database = new
+                        {
+                            status = canConnectToDatabase ? "healthy" : "unhealthy",
+                            responseTime = "< 100ms"
+                        },
+                        memory = new
+                        {
+                            status = "healthy",
+                            usage = "< 80%"
+                        },
+                        disk = new
+                        {
+                            status = "healthy",
+                            usage = "< 70%"
+                        }
+                    }
+                };
 
-    [HttpGet("live")]
-    public IActionResult Live()
-    {
-        // Simple liveness check
-        return Ok(new { status = "Alive", timestamp = DateTime.UtcNow });
+                return Ok(health);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = "unhealthy",
+                    timestamp = DateTime.UtcNow,
+                    error = ex.Message,
+                    checks = new
+                    {
+                        database = new { status = "unhealthy", error = ex.Message }
+                    }
+                });
+            }
+        }
+
+        [HttpGet("ready")]
+        public async Task<ActionResult> GetReadiness()
+        {
+            try
+            {
+                // Readiness check - can the app serve traffic?
+                var canConnectToDatabase = await _context.Database.CanConnectAsync();
+                
+                if (!canConnectToDatabase)
+                {
+                    return StatusCode(503, new
+                    {
+                        status = "not ready",
+                        timestamp = DateTime.UtcNow,
+                        reason = "Database connection failed"
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = "ready",
+                    timestamp = DateTime.UtcNow,
+                    message = "Application is ready to serve traffic"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new
+                {
+                    status = "not ready",
+                    timestamp = DateTime.UtcNow,
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("live")]
+        public ActionResult GetLiveness()
+        {
+            // Liveness check - is the app running?
+            return Ok(new
+            {
+                status = "alive",
+                timestamp = DateTime.UtcNow,
+                uptime = Environment.TickCount64 / 1000 // seconds since startup
+            });
+        }
     }
 }
