@@ -4,7 +4,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -18,8 +20,8 @@ FROM nginx:alpine AS runtime
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Copy built app
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy built app from React Router build output
+COPY --from=build /app/build/client /usr/share/nginx/html
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

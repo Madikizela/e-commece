@@ -214,7 +214,7 @@ public class OrdersController : ControllerBase
         var authHeader = Request.Headers.Authorization.FirstOrDefault();
         _logger.LogInformation("Authorization header: {AuthHeader}", authHeader ?? "None");
 
-        if (string.IsNullOrWhiteSpace(request.Status))
+        if (request == null || string.IsNullOrWhiteSpace(request.Status))
         {
             return BadRequest("Status is required");
         }
