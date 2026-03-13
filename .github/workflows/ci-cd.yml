@@ -20,18 +20,21 @@ jobs:
       with:
         dotnet-version: '9.0.x'
     
-    - name: Clean workspace
+    - name: Clean workspace and remove test projects
       run: |
         echo "Cleaning workspace to ensure no test project remnants"
         find . -name "*Test*" -type d -exec rm -rf {} + 2>/dev/null || true
         find . -name "*.Tests.*" -delete 2>/dev/null || true
+        find . -name "*test*" -type d -exec rm -rf {} + 2>/dev/null || true
+        find . -name "*.test.*" -delete 2>/dev/null || true
+        echo "Cleanup completed"
     
-    - name: Restore dependencies
-      run: dotnet restore EcommerceAPI.csproj
+    - name: Restore dependencies (main project only)
+      run: dotnet restore EcommerceAPI.csproj --verbosity minimal
       working-directory: ./backend
     
-    - name: Build
-      run: dotnet build EcommerceAPI.csproj --no-restore
+    - name: Build (main project only)
+      run: dotnet build EcommerceAPI.csproj --no-restore --configuration Release --verbosity minimal
       working-directory: ./backend
     
     - name: Build Verification Complete
@@ -54,12 +57,13 @@ jobs:
       run: npm ci
       working-directory: ./frontend-app
     
+    - name: Run tests
+      run: npm run test:run
+      working-directory: ./frontend-app
+    
     - name: Build verification
       run: npm run build
       working-directory: ./frontend-app
-    
-    - name: Skip Tests (Temporarily)
-      run: echo "Frontend tests temporarily disabled - build verification successful"
 
   build-verification:
     needs: [test-backend, test-frontend]
