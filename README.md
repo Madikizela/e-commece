@@ -2,6 +2,11 @@
 
 Full-stack e-commerce application with C# ASP.NET Core backend, React frontend, and PostgreSQL database.
 
+## 🚀 CI/CD Status
+[![CI/CD Pipeline](https://github.com/Madikizela/e-commece/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Madikizela/e-commece/actions/workflows/ci-cd.yml)
+
+**Last Verified**: March 13, 2026 - Pipeline working correctly ✅
+
 ## Setup Instructions
 
 ### 1. Database Setup
