@@ -87,7 +87,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("test")]
-    public async Task<ActionResult> TestOrderCreation()
+    public ActionResult TestOrderCreation()
     {
         return Ok(new { message = "Order creation endpoint is accessible", timestamp = DateTime.UtcNow });
     }

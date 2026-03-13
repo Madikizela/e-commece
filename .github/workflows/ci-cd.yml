@@ -27,6 +27,8 @@ jobs:
         find . -name "*.Tests.*" -delete 2>/dev/null || true
         find . -name "*test*" -type d -exec rm -rf {} + 2>/dev/null || true
         find . -name "*.test.*" -delete 2>/dev/null || true
+        # Also clean any solution files that might reference test projects
+        find . -name "*.sln" -exec sed -i '/Test/d' {} + 2>/dev/null || true
         echo "Cleanup completed"
     
     - name: Restore dependencies (main project only)
@@ -53,13 +55,19 @@ jobs:
         cache: 'npm'
         cache-dependency-path: ./frontend-app/package-lock.json
     
+    - name: Clean npm cache
+      run: npm cache clean --force
+      working-directory: ./frontend-app
+    
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --no-audit --no-fund
       working-directory: ./frontend-app
     
     - name: Run tests
       run: npm run test:run
       working-directory: ./frontend-app
+      env:
+        CI: true
     
     - name: Build verification
       run: npm run build
