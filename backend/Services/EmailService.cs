@@ -16,16 +16,100 @@ public interface IEmailService
 public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IConfiguration configuration)
+    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
+    }
+
+    private string GetEmailConfig(string key)
+    {
+        var value = Environment.GetEnvironmentVariable($"EMAIL_{key.ToUpper()}") 
+            ?? _configuration[$"Email:{key}"];
+            
+        if (string.IsNullOrEmpty(value))
+        {
+            _logger.LogWarning("Email configuration '{Key}' is not set. Email functionality will be disabled.", key);
+            return "";
+        }
+        
+        return value;
+    }
+
+    private bool IsEmailConfigured()
+    {
+        var host = GetEmailConfig("Host");
+        var username = GetEmailConfig("Username");
+        var password = GetEmailConfig("Password");
+        var from = GetEmailConfig("From");
+        
+        // Check if we have all required fields
+        if (string.IsNullOrEmpty(host) || 
+            string.IsNullOrEmpty(username) || 
+            string.IsNullOrEmpty(password) || 
+            string.IsNullOrEmpty(from))
+        {
+            return false;
+        }
+        
+        // Check if we're using placeholder/demo credentials
+        if (username.Contains("demo") || 
+            password.Contains("placeholder") || 
+            password.Contains("demo"))
+        {
+            _logger.LogWarning("Email configuration contains placeholder/demo credentials. Please update with real SMTP credentials.");
+            return false;
+        }
+        
+        return true;
+    }
+
+    private async Task SendEmailAsync(MimeMessage message)
+    {
+        // Check if email is properly configured
+        if (!IsEmailConfigured())
+        {
+            _logger.LogWarning("Email configuration is incomplete. Skipping email send to {Email}. " +
+                "Please configure EMAIL_HOST, EMAIL_USERNAME, EMAIL_PASSWORD, and EMAIL_FROM environment variables " +
+                "or set them in appsettings.json under the Email section.", 
+                message.To.FirstOrDefault()?.ToString());
+            return;
+        }
+
+        var host = GetEmailConfig("Host");
+        var username = GetEmailConfig("Username");
+        var password = GetEmailConfig("Password");
+        var port = int.Parse(GetEmailConfig("Port") ?? "587");
+
+        using var client = new SmtpClient();
+        try
+        {
+            _logger.LogInformation("Attempting to send email to {Email} via {Host}:{Port}", 
+                message.To.FirstOrDefault()?.ToString(), host, port);
+
+            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(username, password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+            
+            _logger.LogInformation("Email sent successfully to {Email}", message.To.FirstOrDefault()?.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending email to {Email}. " +
+                "Please verify your email configuration (host: {Host}, username: {Username}). " +
+                "For Gmail, ensure you're using an App Password instead of your regular password.", 
+                message.To.FirstOrDefault()?.ToString(), host, username);
+            // Don't throw - just log the error so the application continues working
+        }
     }
 
     public async Task SendPasswordEmailAsync(string toEmail, string userName, string password)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("E-Commerce Store", _configuration["Email:From"]));
+        message.From.Add(new MailboxAddress("E-Commerce Store", GetEmailConfig("From")));
         message.To.Add(new MailboxAddress(userName, toEmail));
         message.Subject = "Welcome! Your Account Password";
 
@@ -65,10 +149,6 @@ public class EmailService : IEmailService
                             
                             <p>Please keep this password safe and secure. You can use it to login to your account.</p>
                             
-                            <div style='text-align: center;'>
-                                <a href='http://localhost:5175/login' class='button'>Login Now</a>
-                            </div>
-                            
                             <p style='margin-top: 30px; color: #666; font-size: 14px;'>
                                 <strong>Security Tip:</strong> We recommend changing your password after your first login for better security.
                             </p>
@@ -84,39 +164,13 @@ public class EmailService : IEmailService
         };
 
         message.Body = bodyBuilder.ToMessageBody();
-
-        using var client = new SmtpClient();
-        try
-        {
-            // Connect to Gmail SMTP with STARTTLS
-            await client.ConnectAsync(
-                _configuration["Email:Host"],
-                int.Parse(_configuration["Email:Port"]),
-                SecureSocketOptions.StartTls
-            );
-
-            await client.AuthenticateAsync(
-                _configuration["Email:Username"],
-                _configuration["Email:Password"]
-            );
-
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
-            
-            Console.WriteLine($"✅ Email sent successfully to {toEmail}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error sending email: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            throw;
-        }
+        await SendEmailAsync(message);
     }
 
     public async Task SendPasswordResetEmailAsync(string toEmail, string userName, string newPassword)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("E-Commerce Store", _configuration["Email:From"]));
+        message.From.Add(new MailboxAddress("E-Commerce Store", GetEmailConfig("From")));
         message.To.Add(new MailboxAddress(userName, toEmail));
         message.Subject = "Password Reset - Your New Password";
 
@@ -132,7 +186,6 @@ public class EmailService : IEmailService
                         .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
                         .password-box {{ background: white; border: 2px solid #f5576c; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center; }}
                         .password {{ font-size: 24px; font-weight: bold; color: #f5576c; letter-spacing: 2px; }}
-                        .button {{ display: inline-block; background: #f5576c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; }}
                         .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }}
                         .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
                     </style>
@@ -157,10 +210,6 @@ public class EmailService : IEmailService
                                 <strong>⚠️ Security Notice:</strong> If you did not request this password reset, please contact us immediately.
                             </div>
                             
-                            <div style='text-align: center;'>
-                                <a href='http://localhost:5175/login' class='button'>Login Now</a>
-                            </div>
-                            
                             <p style='margin-top: 30px; color: #666; font-size: 14px;'>
                                 <strong>Important:</strong> We recommend changing this password after logging in for better security.
                             </p>
@@ -176,38 +225,13 @@ public class EmailService : IEmailService
         };
 
         message.Body = bodyBuilder.ToMessageBody();
-
-        using var client = new SmtpClient();
-        try
-        {
-            await client.ConnectAsync(
-                _configuration["Email:Host"],
-                int.Parse(_configuration["Email:Port"]),
-                SecureSocketOptions.StartTls
-            );
-
-            await client.AuthenticateAsync(
-                _configuration["Email:Username"],
-                _configuration["Email:Password"]
-            );
-
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
-            
-            Console.WriteLine($"✅ Password reset email sent successfully to {toEmail}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error sending password reset email: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            throw;
-        }
+        await SendEmailAsync(message);
     }
 
     public async Task SendOrderConfirmationEmailAsync(string toEmail, string customerName, Order order)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("E-Commerce Store", _configuration["Email:From"]));
+        message.From.Add(new MailboxAddress("E-Commerce Store", GetEmailConfig("From")));
         message.To.Add(new MailboxAddress(customerName, toEmail));
         message.Subject = $"Order Confirmation - Order #{order.Id}";
 
@@ -280,10 +304,6 @@ public class EmailService : IEmailService
                             </div>
                             
                             <p style='margin-top: 30px;'>We'll send you another email when your order ships.</p>
-                            
-                            <div style='text-align: center; margin-top: 30px;'>
-                                <a href='http://localhost:5175/dashboard' style='display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;'>Track Your Order</a>
-                            </div>
                         </div>
                         <div class='footer'>
                             <p>Questions? Contact us at support@ecommerce.com</p>
@@ -296,37 +316,13 @@ public class EmailService : IEmailService
         };
 
         message.Body = bodyBuilder.ToMessageBody();
-
-        using var client = new SmtpClient();
-        try
-        {
-            await client.ConnectAsync(
-                _configuration["Email:Host"],
-                int.Parse(_configuration["Email:Port"]),
-                SecureSocketOptions.StartTls
-            );
-
-            await client.AuthenticateAsync(
-                _configuration["Email:Username"],
-                _configuration["Email:Password"]
-            );
-
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
-            
-            Console.WriteLine($"✅ Order confirmation email sent to {toEmail}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error sending order confirmation email: {ex.Message}");
-            throw;
-        }
+        await SendEmailAsync(message);
     }
 
     public async Task SendOrderStatusUpdateEmailAsync(string toEmail, string customerName, Order order, string oldStatus)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("E-Commerce Store", _configuration["Email:From"]));
+        message.From.Add(new MailboxAddress("E-Commerce Store", GetEmailConfig("From")));
         message.To.Add(new MailboxAddress(customerName, toEmail));
         message.Subject = $"Order Status Update - Order #{order.Id}";
 
@@ -384,10 +380,6 @@ public class EmailService : IEmailService
                                 <p style='margin: 0;'><strong>Order Total:</strong> R{order.TotalAmount:F2}</p>
                                 <p style='margin: 10px 0 0 0;'><strong>Shipping Address:</strong> {order.ShippingAddress}</p>
                             </div>
-                            
-                            <div style='text-align: center; margin-top: 30px;'>
-                                <a href='http://localhost:5175/dashboard' style='display: inline-block; background: {statusColor}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;'>View Order Details</a>
-                            </div>
                         </div>
                         <div class='footer'>
                             <p>Questions? Contact us at support@ecommerce.com</p>
@@ -400,30 +392,6 @@ public class EmailService : IEmailService
         };
 
         message.Body = bodyBuilder.ToMessageBody();
-
-        using var client = new SmtpClient();
-        try
-        {
-            await client.ConnectAsync(
-                _configuration["Email:Host"],
-                int.Parse(_configuration["Email:Port"]),
-                SecureSocketOptions.StartTls
-            );
-
-            await client.AuthenticateAsync(
-                _configuration["Email:Username"],
-                _configuration["Email:Password"]
-            );
-
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
-            
-            Console.WriteLine($"✅ Order status update email sent to {toEmail}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error sending order status email: {ex.Message}");
-            throw;
-        }
+        await SendEmailAsync(message);
     }
 }

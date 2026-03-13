@@ -79,15 +79,31 @@ export default function Checkout() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5222/api/coupons/validate/${couponCode}`);
+      const response = await fetch(`http://localhost:5222/api/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim() })
+      });
+      
       if (response.ok) {
-        const coupon = await response.json();
-        setAppliedCoupon(coupon);
-        setCouponError('');
-        alert(`Coupon applied! You saved R${getDiscount().toFixed(2)}`);
+        const result = await response.json();
+        if (result.valid) {
+          // Create a coupon object from the validation result
+          const coupon = {
+            code: couponCode.trim().toUpperCase(),
+            discountType: result.discountType,
+            discountValue: result.discountValue
+          };
+          setAppliedCoupon(coupon);
+          setCouponError('');
+          alert(`Coupon applied! You saved R${getDiscount().toFixed(2)}`);
+        } else {
+          setCouponError(result.message || 'Invalid coupon code');
+          setAppliedCoupon(null);
+        }
       } else {
-        const error = await response.text();
-        setCouponError(error);
+        const error = await response.json();
+        setCouponError(error.message || 'Invalid coupon code');
         setAppliedCoupon(null);
       }
     } catch (err) {
@@ -123,9 +139,13 @@ export default function Checkout() {
     };
 
     try {
+      const token = localStorage.getItem('userToken');
       const response = await fetch('http://localhost:5222/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(order)
       });
 
@@ -134,9 +154,12 @@ export default function Checkout() {
         alert('Order placed successfully!');
         navigate('/dashboard');
       } else {
-        alert('Failed to place order');
+        const errorData = await response.text();
+        console.error('Order creation failed:', errorData);
+        alert('Failed to place order: ' + errorData);
       }
     } catch (err) {
+      console.error('Order creation error:', err);
       alert('Failed to place order');
     }
   };

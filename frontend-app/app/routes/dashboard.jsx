@@ -12,9 +12,21 @@ export default function Dashboard() {
     const userId = localStorage.getItem('userId');
     const name = localStorage.getItem('userName');
     const email = localStorage.getItem('userEmail');
+    const role = localStorage.getItem('userRole');
     
     if (!token || !userId) {
       navigate('/login');
+      return;
+    }
+    
+    // If user is an admin, redirect them to admin login
+    if (role === 'Admin') {
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+      navigate('/admin/login');
       return;
     }
     
@@ -25,11 +37,23 @@ export default function Dashboard() {
 
   const loadOrders = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5222/api/users/${userId}/orders`);
-      const data = await response.json();
-      setOrders(data);
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`http://localhost:5222/api/users/${userId}/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.items || data);
+      } else {
+        console.error('Failed to load orders:', response.status);
+        setOrders([]);
+      }
     } catch (err) {
       console.error('Failed to load orders', err);
+      setOrders([]);
     }
   };
 
@@ -38,6 +62,10 @@ export default function Dashboard() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userRole');
+    // Also clear any admin tokens that might exist
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUsername');
     navigate('/');
   };
 
@@ -63,7 +91,7 @@ export default function Dashboard() {
       await fetch(`http://localhost:5222/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify('Cancelled')
+        body: JSON.stringify({ status: 'Cancelled' })
       });
       
       const userId = localStorage.getItem('userId');

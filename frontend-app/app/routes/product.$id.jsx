@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
+import CustomerNav from '../components/CustomerNav';
+import Toast from '../components/Toast';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -14,6 +16,8 @@ export default function ProductDetail() {
   const [userId, setUserId] = useState(null);
   const [userName, setUserName] = useState('');
   const [isInWishlist, setIsInWishlist] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     loadProduct();
@@ -21,7 +25,14 @@ export default function ProductDetail() {
     loadReviews();
     loadAverageRating();
     checkLoginStatus();
+    updateCartCount();
   }, [id]);
+
+  const updateCartCount = () => {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    setCartCount(count);
+  };
 
   const checkLoginStatus = () => {
     const token = localStorage.getItem('userToken');
@@ -102,7 +113,8 @@ export default function ProductDetail() {
     }
     
     localStorage.setItem('cart', JSON.stringify(cart));
-    alert(`${product.name} added to cart!`);
+    updateCartCount();
+    setToast({ message: `${product.name} added to cart!`, type: 'success' });
   };
 
   const handleWishlistToggle = async () => {
@@ -166,7 +178,7 @@ export default function ProductDetail() {
 
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={`text-2xl ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}>
+      <span key={i} className={`text-lg md:text-2xl ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}>
         ★
       </span>
     ));
@@ -176,8 +188,8 @@ export default function ProductDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">📦</div>
-          <p className="text-xl text-gray-600">Loading product...</p>
+          <div className="text-4xl md:text-6xl mb-4">📦</div>
+          <p className="text-lg md:text-xl text-gray-600">Loading product...</p>
         </div>
       </div>
     );
@@ -187,27 +199,16 @@ export default function ProductDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center space-x-2 text-white hover:text-blue-100 transition">
-              <span className="text-2xl">🛒</span>
-              <span className="text-xl font-bold">E-Commerce Store</span>
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link to="/cart" className="text-white hover:text-blue-100 transition">
-                <span className="text-2xl">🛒</span>
-              </Link>
-              {isLoggedIn ? (
-                <Link to="/dashboard" className="text-white hover:text-blue-100 transition">Dashboard</Link>
-              ) : (
-                <Link to="/login" className="text-white hover:text-blue-100 transition">Login</Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      <CustomerNav userName={userName} cartCount={cartCount} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}

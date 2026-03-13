@@ -24,11 +24,15 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in">
-      <div className={`${types[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3 min-w-[300px]`}>
-        <span className="text-2xl">{icons[type]}</span>
-        <span className="font-semibold">{message}</span>
-        <button onClick={onClose} className="ml-auto text-white hover:text-gray-200">
+    <div className="fixed top-4 left-4 right-4 md:top-4 md:right-4 md:left-auto z-50 animate-fade-in">
+      <div className={`${types[type]} text-white px-4 md:px-6 py-3 md:py-4 rounded-lg shadow-2xl flex items-center space-x-3 w-full md:min-w-[300px] md:w-auto`}>
+        <span className="text-lg md:text-2xl flex-shrink-0">{icons[type]}</span>
+        <span className="font-semibold text-sm md:text-base flex-1">{message}</span>
+        <button 
+          onClick={onClose} 
+          className="ml-auto text-white hover:text-gray-200 p-1 flex-shrink-0 active:scale-95"
+          aria-label="Close notification"
+        >
           ✕
         </button>
       </div>

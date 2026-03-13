@@ -13,6 +13,7 @@ export default function AdminCoupons() {
     isActive: true
   });
   const [editing, setEditing] = useState(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -25,11 +26,13 @@ export default function AdminCoupons() {
 
   const loadCoupons = async () => {
     try {
-      const response = await fetch('http://localhost:5222/api/coupons');
+      const response = await fetch('http://localhost:5222/api/coupons?page=1&pageSize=100');
       const data = await response.json();
-      setCoupons(data);
+      // Handle paginated response
+      setCoupons(data.items || data);
     } catch (err) {
       console.error('Failed to load coupons', err);
+      setCoupons([]);
     }
   };
 
@@ -115,15 +118,17 @@ export default function AdminCoupons() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-gradient-to-r from-orange-600 to-red-600 shadow-lg">
+      {/* Mobile-Responsive Navbar */}
+      <nav className="bg-gradient-to-r from-orange-600 to-red-600 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2 text-white">
               <span className="text-2xl">🎟️</span>
-              <span className="text-xl font-bold">Admin - Coupon Management</span>
+              <span className="text-lg md:text-xl font-bold">Coupon Management</span>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               <Link to="/admin/dashboard" className="text-white hover:text-orange-100 transition">
                 Dashboard
               </Link>
@@ -138,12 +143,64 @@ export default function AdminCoupons() {
                   localStorage.removeItem('adminToken');
                   navigate('/admin/login');
                 }}
-                className="text-white hover:text-orange-100 transition"
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition active:scale-95"
               >
                 Logout
               </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden text-white hover:text-orange-200 transition p-2"
+              aria-label="Toggle mobile menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? 'rotate-45 translate-y-1' : '-translate-y-0.5'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${showMobileMenu ? 'opacity-0' : 'opacity-100'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'}`}></span>
+              </div>
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="md:hidden">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-orange-700 rounded-b-lg">
+                <Link
+                  to="/admin/dashboard"
+                  className="text-white hover:bg-orange-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏠 Dashboard
+                </Link>
+                <Link
+                  to="/admin/products"
+                  className="text-white hover:bg-orange-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📦 Products
+                </Link>
+                <Link
+                  to="/admin/orders"
+                  className="text-white hover:bg-orange-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📋 Orders
+                </Link>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('adminToken');
+                    navigate('/admin/login');
+                    setShowMobileMenu(false);
+                  }}
+                  className="text-red-300 hover:bg-red-600 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium transition"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 

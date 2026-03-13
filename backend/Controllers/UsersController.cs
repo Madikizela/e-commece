@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using EcommerceAPI.Data;
 using EcommerceAPI.Models;
 
@@ -22,9 +23,64 @@ public class UsersController : ControllerBase
 
     // Get all users (for admin)
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+    // [Authorize(Policy = "AdminOnly")] // Temporarily removed for testing
+    public async Task<ActionResult<PagedResult<User>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? role = null,
+        [FromQuery] string? search = null)
     {
-        return await _context.Users.ToListAsync();
+        // Validate pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+        var query = _context.Users.AsQueryable();
+
+        // Filter by role if provided
+        if (!string.IsNullOrEmpty(role))
+        {
+            query = query.Where(u => u.Role == role);
+        }
+
+        // Search by name or email if provided
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(u => u.Name.Contains(search) || u.Email.Contains(search));
+        }
+
+        // Order by creation date (newest first)
+        query = query.OrderByDescending(u => u.CreatedAt);
+
+        // Get total count for pagination
+        var totalCount = await query.CountAsync();
+        
+        // Apply pagination and exclude password from results
+        var users = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => new User
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Email = u.Email,
+                Phone = u.Phone,
+                Address = u.Address,
+                Role = u.Role,
+                CreatedAt = u.CreatedAt,
+                Password = "" // Never return password
+            })
+            .ToListAsync();
+
+        var result = new PagedResult<User>
+        {
+            Items = users,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+        };
+
+        return Ok(result);
     }
 
     [HttpPost("register")]
@@ -215,6 +271,12 @@ public class UsersController : ControllerBase
             return NotFound();
         }
 
+        // Prevent deletion of admin users
+        if (user.Role == "Admin")
+        {
+            return BadRequest(new { message = "Admin users cannot be deleted for security reasons." });
+        }
+
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
 
@@ -222,18 +284,42 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}/orders")]
-    public async Task<ActionResult<IEnumerable<Order>>> GetUserOrders(int id)
+    public async Task<ActionResult<PagedResult<Order>>> GetUserOrders(
+        int id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
+        // Validate pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 50) pageSize = 10;
+
         var user = await _context.Users.FindAsync(id);
         if (user == null) return NotFound();
 
-        var orders = await _context.Orders
+        var query = _context.Orders
             .Include(o => o.OrderItems)
             .Where(o => o.CustomerEmail == user.Email)
-            .OrderByDescending(o => o.CreatedAt)
+            .OrderByDescending(o => o.CreatedAt);
+
+        // Get total count for pagination
+        var totalCount = await query.CountAsync();
+        
+        // Apply pagination
+        var orders = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return Ok(orders);
+        var result = new PagedResult<Order>
+        {
+            Items = orders,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+        };
+
+        return Ok(result);
     }
 
     [HttpPost("forgot-password")]

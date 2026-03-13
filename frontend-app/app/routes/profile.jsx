@@ -25,37 +25,74 @@ export default function Profile() {
 
   const loadUserProfile = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5222/api/users/${userId}`);
+      const token = localStorage.getItem('userToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const response = await fetch(`http://localhost:5222/api/users/${userId}`, { headers });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userId');
+        navigate('/login');
+        return;
+      }
+
       const data = await response.json();
-      setUser({ name: data.name, email: data.email, phone: data.phone, address: data.address });
+      setUser({ name: data.name, email: data.email, phone: data.phone || '', address: data.address || '' });
     } catch (err) {
+      console.error('Failed to load profile', err);
       setError('Failed to load profile');
     }
   };
 
   const loadUserStats = async (userId) => {
     try {
-      // Load orders
-      const ordersRes = await fetch(`http://localhost:5222/api/users/${userId}/orders`);
-      const orders = await ordersRes.json();
+      const token = localStorage.getItem('userToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Load orders using the proper endpoint
+      const ordersRes = await fetch(`http://localhost:5222/api/users/${userId}/orders?page=1&pageSize=1000`, { headers });
+      
+      if (ordersRes.status === 401) {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userId');
+        navigate('/login');
+        return;
+      }
+
+      const ordersData = await ordersRes.json();
+      const orders = ordersData.items || [];
       
       // Load wishlist
-      const wishlistRes = await fetch(`http://localhost:5222/api/wishlist/user/${userId}`);
-      const wishlist = await wishlistRes.json();
+      const wishlistRes = await fetch(`http://localhost:5222/api/wishlist/user/${userId}`, { headers });
+      const wishlist = await wishlistRes.json().catch(() => []);
       
-      // Load reviews
-      const reviewsRes = await fetch('http://localhost:5222/api/reviews');
-      const allReviews = await reviewsRes.json();
-      const userReviews = allReviews.filter(r => r.userId === parseInt(userId));
+      // Load reviews using the new user-specific endpoint
+      const reviewsRes = await fetch(`http://localhost:5222/api/reviews/user/${userId}`, { headers });
+      const reviews = await reviewsRes.json().catch(() => []);
+      
+      console.log('User stats loaded:', {
+        orders: orders.length,
+        totalSpent: orders.filter(order => order.status !== 'Cancelled').reduce((sum, order) => sum + order.totalAmount, 0),
+        wishlist: Array.isArray(wishlist) ? wishlist.length : 0,
+        reviews: Array.isArray(reviews) ? reviews.length : 0
+      });
       
       setStats({
         totalOrders: orders.length,
-        totalSpent: orders.reduce((sum, order) => sum + order.totalAmount, 0),
-        wishlistCount: wishlist.length,
-        reviewsCount: userReviews.length
+        totalSpent: orders.filter(order => order.status !== 'Cancelled').reduce((sum, order) => sum + order.totalAmount, 0),
+        wishlistCount: Array.isArray(wishlist) ? wishlist.length : 0,
+        reviewsCount: Array.isArray(reviews) ? reviews.length : 0
       });
     } catch (err) {
       console.error('Failed to load stats', err);
+      setStats({ totalOrders: 0, totalSpent: 0, wishlistCount: 0, reviewsCount: 0 });
     }
   };
 
@@ -67,19 +104,34 @@ export default function Profile() {
 
     try {
       const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('userToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       const response = await fetch(`http://localhost:5222/api/users/${userId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(user)
       });
+
+      if (response.status === 401) {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userId');
+        navigate('/login');
+        return;
+      }
 
       if (response.ok) {
         localStorage.setItem('userName', user.name);
         setMessage('Profile updated successfully!');
       } else {
-        setError('Failed to update profile');
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || 'Failed to update profile');
       }
     } catch (err) {
+      console.error('Failed to update profile', err);
       setError('Failed to update profile');
     } finally {
       setLoading(false);
@@ -105,14 +157,27 @@ export default function Profile() {
 
     try {
       const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('userToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       const response = await fetch(`http://localhost:5222/api/users/${userId}/change-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword
         })
       });
+
+      if (response.status === 401) {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userId');
+        navigate('/login');
+        return;
+      }
 
       const data = await response.json();
 
@@ -123,6 +188,7 @@ export default function Profile() {
         setError(data.message || 'Failed to change password');
       }
     } catch (err) {
+      console.error('Failed to change password', err);
       setError('Failed to change password');
     } finally {
       setLoading(false);

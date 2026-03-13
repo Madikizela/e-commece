@@ -9,6 +9,7 @@ export default function AdminCustomers() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [customerOrders, setCustomerOrders] = useState([]);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -34,26 +35,63 @@ export default function AdminCustomers() {
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch('http://localhost:5222/api/users');
+      const token = localStorage.getItem('adminToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const response = await fetch('http://localhost:5222/api/users?page=1&pageSize=1000', { headers });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
+
       const data = await response.json();
-      setCustomers(data);
-      setFilteredCustomers(data);
+      console.log('Raw customers API response:', data);
+      
+      // Handle paginated response - extract items array
+      const customers = data.items || data || [];
+      console.log('Processed customers:', customers.length);
+      
+      setCustomers(customers);
+      setFilteredCustomers(customers);
     } catch (err) {
       console.error('Failed to load customers', err);
+      setCustomers([]);
+      setFilteredCustomers([]);
     }
   };
 
   const loadCustomerOrders = async (customerId) => {
     try {
-      const response = await fetch('http://localhost:5222/api/orders');
-      const allOrders = await response.json();
-      // Filter orders by customer email (you might need to adjust this based on your data structure)
+      const token = localStorage.getItem('adminToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const response = await fetch('http://localhost:5222/api/orders?page=1&pageSize=1000', { headers });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
+
+      const data = await response.json();
+      const allOrders = data.items || data || [];
+      
+      // Filter orders by customer email
       const orders = allOrders.filter(order => 
         order.customerEmail === selectedCustomer?.email
       );
       setCustomerOrders(orders);
     } catch (err) {
       console.error('Failed to load customer orders', err);
+      setCustomerOrders([]);
     }
   };
 
@@ -62,49 +100,87 @@ export default function AdminCustomers() {
     setShowDetailsModal(true);
     // Load customer's orders
     try {
-      const response = await fetch('http://localhost:5222/api/orders');
-      const allOrders = await response.json();
+      const token = localStorage.getItem('adminToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const response = await fetch('http://localhost:5222/api/orders?page=1&pageSize=1000', { headers });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
+
+      const data = await response.json();
+      const allOrders = data.items || data || [];
+      
       const orders = allOrders.filter(order => 
         order.customerEmail === customer.email
       );
       setCustomerOrders(orders);
     } catch (err) {
       console.error('Failed to load customer orders', err);
+      setCustomerOrders([]);
     }
   };
 
   const handleDeleteCustomer = async (id) => {
+    const customer = customers.find(c => c.id === id);
+    
+    // Prevent deletion of admin users
+    if (customer?.role === 'Admin') {
+      alert('Admin users cannot be deleted for security reasons.');
+      return;
+    }
+
     if (confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
       try {
-        await fetch(`http://localhost:5222/api/users/${id}`, {
-          method: 'DELETE'
+        const token = localStorage.getItem('adminToken');
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        const response = await fetch(`http://localhost:5222/api/users/${id}`, {
+          method: 'DELETE',
+          headers
         });
-        loadCustomers();
+
+        if (response.status === 401) {
+          localStorage.removeItem('adminToken');
+          navigate('/admin/login');
+          return;
+        }
+
+        if (response.ok) {
+          loadCustomers();
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.message || 'Failed to delete customer');
+        }
       } catch (err) {
+        console.error('Failed to delete customer', err);
         alert('Failed to delete customer');
       }
     }
   };
 
-  const getTotalSpent = (customerEmail) => {
-    const response = fetch('http://localhost:5222/api/orders');
-    return response.then(res => res.json()).then(orders => {
-      const customerOrders = orders.filter(o => o.customerEmail === customerEmail);
-      return customerOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    }).catch(() => 0);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg">
+      {/* Mobile-Responsive Navbar */}
+      <nav className="bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2 text-white">
               <span className="text-2xl">👥</span>
-              <span className="text-xl font-bold">Admin - Customer Management</span>
+              <span className="text-lg md:text-xl font-bold">Customer Management</span>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               <Link to="/admin/dashboard" className="text-white hover:text-purple-100 transition">
                 Dashboard
               </Link>
@@ -122,12 +198,71 @@ export default function AdminCustomers() {
                   localStorage.removeItem('adminToken');
                   navigate('/admin/login');
                 }}
-                className="text-white hover:text-purple-100 transition"
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition active:scale-95"
               >
                 Logout
               </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden text-white hover:text-purple-200 transition p-2"
+              aria-label="Toggle mobile menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? 'rotate-45 translate-y-1' : '-translate-y-0.5'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${showMobileMenu ? 'opacity-0' : 'opacity-100'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'}`}></span>
+              </div>
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="md:hidden">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-purple-700 rounded-b-lg">
+                <Link
+                  to="/admin/dashboard"
+                  className="text-white hover:bg-purple-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏠 Dashboard
+                </Link>
+                <Link
+                  to="/admin/products"
+                  className="text-white hover:bg-purple-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📦 Products
+                </Link>
+                <Link
+                  to="/admin/orders"
+                  className="text-white hover:bg-purple-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📋 Orders
+                </Link>
+                <Link
+                  to="/admin/inventory"
+                  className="text-white hover:bg-purple-600 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📊 Inventory
+                </Link>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('adminToken');
+                    navigate('/admin/login');
+                    setShowMobileMenu(false);
+                  }}
+                  className="text-red-300 hover:bg-red-600 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium transition"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -220,11 +355,22 @@ export default function AdminCustomers() {
                     <tr key={customer.id} className="hover:bg-gray-50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-bold mr-3">
-                            {customer.name.charAt(0).toUpperCase()}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mr-3 ${
+                            customer.role === 'Admin' 
+                              ? 'bg-gradient-to-br from-red-500 to-red-700' 
+                              : 'bg-gradient-to-br from-purple-400 to-blue-500'
+                          }`}>
+                            {customer.role === 'Admin' ? '👑' : customer.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-900">{customer.name}</span>
+                              {customer.role === 'Admin' && (
+                                <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-gray-500">ID: {customer.id}</div>
                           </div>
                         </div>
@@ -250,12 +396,18 @@ export default function AdminCustomers() {
                         >
                           👁️ View
                         </button>
-                        <button
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          🗑️ Delete
-                        </button>
+                        {customer.role === 'Admin' ? (
+                          <span className="text-gray-400 cursor-not-allowed" title="Admin users cannot be deleted">
+                            🔒 Protected
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

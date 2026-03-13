@@ -76,6 +76,7 @@ export default function Register() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
+              autoComplete="name"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
               placeholder="John Doe"
             />
@@ -88,6 +89,7 @@ export default function Register() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
+              autoComplete="email"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
               placeholder="john@example.com"
             />
@@ -100,6 +102,7 @@ export default function Register() {
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               required
+              autoComplete="tel"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
               placeholder="+27 123 456 789"
             />
@@ -112,6 +115,7 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               required
               rows="2"
+              autoComplete="street-address"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition resize-none"
               placeholder="123 Main St, City"
             />

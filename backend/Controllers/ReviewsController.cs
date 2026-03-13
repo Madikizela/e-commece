@@ -25,6 +25,19 @@ public class ReviewsController : ControllerBase
             .ToListAsync();
     }
 
+    [HttpGet("user/{userId}")]
+    public async Task<ActionResult<IEnumerable<Review>>> GetUserReviews(int userId)
+    {
+        // Get user email first
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        return await _context.Reviews
+            .Where(r => r.UserName == user.Email)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
+
     [HttpPost]
     public async Task<ActionResult<Review>> CreateReview(Review review)
     {

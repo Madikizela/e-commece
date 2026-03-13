@@ -53,6 +53,7 @@ export default function AdminLogin() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              autoComplete="username"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
               placeholder="Enter your username"
             />
@@ -65,6 +66,7 @@ export default function AdminLogin() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
               placeholder="Enter your password"
             />
@@ -83,12 +85,6 @@ export default function AdminLogin() {
             Login
           </button>
         </form>
-
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm font-semibold text-blue-800 mb-2">Demo Credentials:</p>
-          <p className="text-sm text-blue-700">Username: <span className="font-mono font-bold">admin</span></p>
-          <p className="text-sm text-blue-700">Password: <span className="font-mono font-bold">admin123</span></p>
-        </div>
       </div>
     </div>
   );

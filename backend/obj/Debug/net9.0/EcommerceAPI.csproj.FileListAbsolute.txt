@@ -142,3 +142,5 @@ C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Microsoft.IdentityMode
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.sourcelink.json
+C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\appsettings.Production.json

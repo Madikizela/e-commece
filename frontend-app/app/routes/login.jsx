@@ -27,14 +27,9 @@ export default function Login() {
         localStorage.setItem('userEmail', data.email);
         localStorage.setItem('userRole', data.role);
         
-        // Redirect based on role
-        if (data.role === 'Admin') {
-          localStorage.setItem('adminToken', data.token);
-          localStorage.setItem('adminUsername', data.name);
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        // Regular customer login - always redirect to customer dashboard
+        // Admin users should use the dedicated admin login page
+        navigate('/dashboard');
       } else {
         setError(data.message || 'Invalid credentials');
       }
@@ -45,18 +40,18 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-semibold mb-6 transition">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8">
+        <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-semibold mb-6 transition active:scale-95">
           <span className="mr-2">←</span> Back to Home
         </Link>
         
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🔐</div>
-          <h1 className="text-3xl font-bold text-gray-800">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Login to your account</p>
+        <div className="text-center mb-6 md:mb-8">
+          <div className="text-4xl md:text-6xl mb-4">🔐</div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Welcome Back</h1>
+          <p className="text-gray-600 mt-2">Customer Login</p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
             <input
@@ -64,7 +59,8 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
+              autoComplete="email"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition text-base"
               placeholder="your@email.com"
             />
           </div>
@@ -76,36 +72,44 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition"
+              autoComplete="current-password"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition text-base"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
-              <p className="font-semibold">{error}</p>
+              <p className="font-semibold text-sm">{error}</p>
             </div>
           )}
 
           <button 
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg hover:shadow-xl"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg hover:shadow-xl active:scale-95"
           >
             Login
           </button>
         </form>
 
         <div className="mt-6 text-center space-y-3">
-          <Link to="/forgot-password" className="block text-blue-600 hover:text-blue-700 font-semibold">
+          <Link to="/forgot-password" className="block text-blue-600 hover:text-blue-700 font-semibold active:scale-95">
             Forgot your password?
           </Link>
           
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm">
             Don't have an account?{' '}
             <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
               Register here
             </Link>
           </p>
+          
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <p className="text-gray-500 text-xs mb-2">Admin Access</p>
+            <Link to="/admin/login" className="text-purple-600 hover:text-purple-700 font-semibold text-sm">
+              Admin Login →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

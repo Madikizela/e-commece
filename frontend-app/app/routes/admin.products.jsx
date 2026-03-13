@@ -11,6 +11,7 @@ export default function AdminProducts() {
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [editingCategory, setEditingCategory] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -23,26 +24,43 @@ export default function AdminProducts() {
   }, [navigate]);
 
   const loadProducts = async () => {
-    const data = await productService.getAll();
-    setProducts(data);
+    try {
+      const response = await productService.getAll(1, 100); // Load first 100 products for admin
+      setProducts(response.products || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      setProducts([]);
+    }
   };
 
   const loadCategories = async () => {
-    const response = await fetch('http://localhost:5222/api/categories');
-    const data = await response.json();
-    setCategories(data);
+    try {
+      const response = await fetch('http://localhost:5222/api/categories');
+      const data = await response.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      setCategories([]);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editing) {
-      await productService.update(editing, { ...form, id: editing });
-      setEditing(null);
-    } else {
-      await productService.create(form);
+    try {
+      if (editing) {
+        await productService.update(editing, { ...form, id: editing });
+        setEditing(null);
+        alert('Product updated successfully!');
+      } else {
+        await productService.create(form);
+        alert('Product created successfully!');
+      }
+      setForm({ name: '', description: '', price: 0, stock: 0, imageUrl: '', shippingCost: 0, categoryId: '' });
+      loadProducts();
+    } catch (error) {
+      console.error('Product operation failed:', error);
+      alert(error.message || 'Failed to save product. Please try again.');
     }
-    setForm({ name: '', description: '', price: 0, stock: 0, imageUrl: '', shippingCost: 0, categoryId: '' });
-    loadProducts();
   };
 
   const handleEdit = (product) => {
@@ -52,8 +70,14 @@ export default function AdminProducts() {
 
   const handleDelete = async (id) => {
     if (confirm('Delete this product?')) {
-      await productService.delete(id);
-      loadProducts();
+      try {
+        await productService.delete(id);
+        loadProducts();
+        alert('Product deleted successfully!');
+      } catch (error) {
+        console.error('Delete product failed:', error);
+        alert(error.message || 'Failed to delete product. Please try again.');
+      }
     }
   };
 
@@ -65,25 +89,57 @@ export default function AdminProducts() {
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem('adminToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       if (editingCategory) {
-        await fetch(`http://localhost:5222/api/categories/${editingCategory}`, {
+        const response = await fetch(`http://localhost:5222/api/categories/${editingCategory}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ ...categoryForm, id: editingCategory })
         });
+
+        if (response.status === 401) {
+          localStorage.removeItem('adminToken');
+          navigate('/admin/login');
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to update category');
+        }
+
         setEditingCategory(null);
       } else {
-        await fetch('http://localhost:5222/api/categories', {
+        const response = await fetch('http://localhost:5222/api/categories', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(categoryForm)
         });
+
+        if (response.status === 401) {
+          localStorage.removeItem('adminToken');
+          navigate('/admin/login');
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create category');
+        }
       }
+      
       setCategoryForm({ name: '', description: '' });
       setShowCategoryModal(false);
       loadCategories();
+      alert(editingCategory ? 'Category updated successfully!' : 'Category added successfully!');
     } catch (err) {
-      alert('Failed to save category');
+      console.error('Category operation failed:', err);
+      alert(err.message || 'Failed to save category');
     }
   };
 
@@ -96,11 +152,34 @@ export default function AdminProducts() {
   const handleDeleteCategory = async (id) => {
     if (confirm('Delete this category? Products with this category will be uncategorized.')) {
       try {
-        await fetch(`http://localhost:5222/api/categories/${id}`, { method: 'DELETE' });
+        const token = localStorage.getItem('adminToken');
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        const response = await fetch(`http://localhost:5222/api/categories/${id}`, { 
+          method: 'DELETE',
+          headers 
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('adminToken');
+          navigate('/admin/login');
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to delete category');
+        }
+
         loadCategories();
         loadProducts();
+        alert('Category deleted successfully!');
       } catch (err) {
-        alert('Failed to delete category');
+        console.error('Delete category failed:', err);
+        alert(err.message || 'Failed to delete category');
       }
     }
   };
@@ -113,18 +192,88 @@ export default function AdminProducts() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-gradient-to-r from-blue-700 to-blue-900 shadow-lg">
+      {/* Mobile-Responsive Navbar */}
+      <nav className="bg-gradient-to-r from-blue-700 to-blue-900 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h2 className="text-2xl font-bold text-white">Admin Panel</h2>
-            <div className="flex items-center space-x-6">
+            <h2 className="text-lg md:text-2xl font-bold text-white">Admin Panel</h2>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-6">
               <Link to="/admin/dashboard" className="text-white hover:text-blue-200 transition">Dashboard</Link>
               <Link to="/admin/products" className="text-white font-semibold border-b-2 border-white">Products</Link>
               <Link to="/admin/orders" className="text-white hover:text-blue-200 transition">Orders</Link>
               <Link to="/" className="text-white hover:text-blue-200 transition">View Store</Link>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('adminToken');
+                  navigate('/admin/login');
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition active:scale-95"
+              >
+                Logout
+              </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden text-white hover:text-blue-200 transition p-2"
+              aria-label="Toggle mobile menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? 'rotate-45 translate-y-1' : '-translate-y-0.5'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${showMobileMenu ? 'opacity-0' : 'opacity-100'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'}`}></span>
+              </div>
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="md:hidden">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-blue-800 rounded-b-lg">
+                <Link
+                  to="/admin/dashboard"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏠 Dashboard
+                </Link>
+                <Link
+                  to="/admin/products"
+                  className="text-white bg-blue-700 block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📦 Products
+                </Link>
+                <Link
+                  to="/admin/orders"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📋 Orders
+                </Link>
+                <Link
+                  to="/"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏪 View Store
+                </Link>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('adminToken');
+                    navigate('/admin/login');
+                    setShowMobileMenu(false);
+                  }}
+                  className="text-red-300 hover:bg-red-600 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium transition"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 

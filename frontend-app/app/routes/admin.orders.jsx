@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router';
 export default function AdminOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -16,13 +17,28 @@ export default function AdminOrders() {
   }, [navigate]);
 
   const loadOrders = async () => {
-    const data = await orderService.getAll();
-    setOrders(data);
+    try {
+      const response = await orderService.getAll(1, 50); // Load first 50 orders for admin
+      setOrders(response.orders || []);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      setOrders([]);
+    }
   };
 
   const handleStatusChange = async (id, status) => {
-    await orderService.updateStatus(id, status);
-    loadOrders();
+    try {
+      await orderService.updateStatus(id, status);
+      loadOrders();
+    } catch (error) {
+      console.error('Status update failed:', error);
+      if (error.message.includes('Admin session expired')) {
+        alert('Admin session expired. Please log in again.');
+        navigate('/admin/login');
+      } else {
+        alert(`Failed to update order status: ${error.message}`);
+      }
+    }
   };
 
   const getStatusColor = (status) => {
@@ -38,18 +54,88 @@ export default function AdminOrders() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-gradient-to-r from-blue-700 to-blue-900 shadow-lg">
+      {/* Mobile-Responsive Navbar */}
+      <nav className="bg-gradient-to-r from-blue-700 to-blue-900 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h2 className="text-2xl font-bold text-white">Admin Panel</h2>
-            <div className="flex items-center space-x-6">
+            <h2 className="text-lg md:text-2xl font-bold text-white">Admin Panel</h2>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-6">
               <Link to="/admin/dashboard" className="text-white hover:text-blue-200 transition">Dashboard</Link>
               <Link to="/admin/products" className="text-white hover:text-blue-200 transition">Products</Link>
               <Link to="/admin/orders" className="text-white font-semibold border-b-2 border-white">Orders</Link>
               <Link to="/" className="text-white hover:text-blue-200 transition">View Store</Link>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('adminToken');
+                  navigate('/admin/login');
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition active:scale-95"
+              >
+                Logout
+              </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden text-white hover:text-blue-200 transition p-2"
+              aria-label="Toggle mobile menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? 'rotate-45 translate-y-1' : '-translate-y-0.5'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${showMobileMenu ? 'opacity-0' : 'opacity-100'}`}></span>
+                <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${showMobileMenu ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'}`}></span>
+              </div>
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="md:hidden">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-blue-800 rounded-b-lg">
+                <Link
+                  to="/admin/dashboard"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏠 Dashboard
+                </Link>
+                <Link
+                  to="/admin/products"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📦 Products
+                </Link>
+                <Link
+                  to="/admin/orders"
+                  className="text-white bg-blue-700 block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  📋 Orders
+                </Link>
+                <Link
+                  to="/"
+                  className="text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  🏪 View Store
+                </Link>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('adminToken');
+                    navigate('/admin/login');
+                    setShowMobileMenu(false);
+                  }}
+                  className="text-red-300 hover:bg-red-600 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium transition"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
