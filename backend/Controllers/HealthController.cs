@@ -16,7 +16,7 @@ namespace EcommerceAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult> GetHealth()
+        public ActionResult GetHealth()
         {
             try
             {
