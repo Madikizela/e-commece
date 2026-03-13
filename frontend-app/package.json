@@ -11,6 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
+    "test:e2e": "vitest run src/test/e2e/",
+    "test:watch": "vitest --watch",
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
