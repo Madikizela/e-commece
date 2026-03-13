@@ -1,0 +1,78 @@
+{
+  "ApiUrl": "http://localhost:5222",
+  "SkippedTests": 0,
+  "EndTime": "2026-03-13T17:52:34.886089+02:00",
+  "TestSuites": [
+    {
+      "Details": [
+        "✅ /api/health: PASSED",
+        "✅ /api/health/detailed: PASSED",
+        "✅ /api/health/ready: PASSED",
+        "✅ /api/health/live: PASSED"
+      ],
+      "Failed": 0,
+      "Name": "API Health Checks",
+      "Skipped": 0,
+      "Passed": 1,
+      "Duration": 0.2137951
+    },
+    {
+      "Details": [
+        "All unit tests passed"
+      ],
+      "Failed": 0,
+      "Name": "Backend Unit Tests",
+      "Skipped": 0,
+      "Passed": 1,
+      "Duration": 1.4211293
+    },
+    {
+      "Details": [
+        "Build failed"
+      ],
+      "Failed": 1,
+      "Name": "Backend Integration Tests",
+      "Skipped": 0,
+      "Passed": 0,
+      "Duration": 0
+    },
+    {
+      "Details": [
+        "All frontend tests passed"
+      ],
+      "Failed": 0,
+      "Name": "Frontend Unit Tests",
+      "Skipped": 0,
+      "Passed": 1,
+      "Duration": 6.3702541
+    },
+    {
+      "Details": [
+        "All E2E tests passed"
+      ],
+      "Failed": 0,
+      "Name": "Frontend E2E Tests",
+      "Skipped": 0,
+      "Passed": 1,
+      "Duration": 4.6340026
+    },
+    {
+      "Details": [
+        "Endpoint /api/health: 4.88ms ✅",
+        "Endpoint /api/health/ready: 41.86ms ✅",
+        "Endpoint /api/products: 45.54ms ✅",
+        "Endpoint /api/categories: 7.35ms ✅"
+      ],
+      "Failed": 0,
+      "Name": "Performance Tests",
+      "Skipped": 0,
+      "Passed": 1,
+      "Duration": 0.1058194
+    }
+  ],
+  "FailedTests": 1,
+  "TotalTests": 6,
+  "StartTime": "2026-03-13T17:52:18.9856351+02:00",
+  "Environment": "development",
+  "PassedTests": 5
+}

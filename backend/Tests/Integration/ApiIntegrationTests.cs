@@ -1,27 +1,24 @@
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Text.Json;
 using Xunit;
 
 namespace EcommerceAPI.Tests.Integration
 {
-    public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+    public class ApiIntegrationTests
     {
-        private readonly WebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
+        private readonly string _baseUrl = "http://localhost:5222"; // Use the running server
 
-        public ApiIntegrationTests(WebApplicationFactory<Program> factory)
+        public ApiIntegrationTests()
         {
-            _factory = factory;
-            _client = _factory.CreateClient();
+            _client = new HttpClient();
         }
 
         [Fact]
         public async Task HealthCheck_ReturnsHealthyStatus()
         {
             // Act
-            var response = await _client.GetAsync("/api/health");
+            var response = await _client.GetAsync($"{_baseUrl}/api/health");
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -35,7 +32,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task DetailedHealthCheck_ReturnsDetailedStatus()
         {
             // Act
-            var response = await _client.GetAsync("/api/health/detailed");
+            var response = await _client.GetAsync($"{_baseUrl}/api/health/detailed");
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -49,7 +46,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task ReadinessCheck_ReturnsReadyStatus()
         {
             // Act
-            var response = await _client.GetAsync("/api/health/ready");
+            var response = await _client.GetAsync($"{_baseUrl}/api/health/ready");
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -61,7 +58,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task LivenessCheck_ReturnsAliveStatus()
         {
             // Act
-            var response = await _client.GetAsync("/api/health/live");
+            var response = await _client.GetAsync($"{_baseUrl}/api/health/live");
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -74,7 +71,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task ProductsApi_ReturnsSuccessStatusCode()
         {
             // Act
-            var response = await _client.GetAsync("/api/products");
+            var response = await _client.GetAsync($"{_baseUrl}/api/products");
 
             // Assert
             Assert.True(response.IsSuccessStatusCode);
@@ -84,7 +81,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task CategoriesApi_ReturnsSuccessStatusCode()
         {
             // Act
-            var response = await _client.GetAsync("/api/categories");
+            var response = await _client.GetAsync($"{_baseUrl}/api/categories");
 
             // Assert
             Assert.True(response.IsSuccessStatusCode);
@@ -94,7 +91,7 @@ namespace EcommerceAPI.Tests.Integration
         public async Task OrdersApi_ReturnsSuccessStatusCode()
         {
             // Act
-            var response = await _client.GetAsync("/api/orders");
+            var response = await _client.GetAsync($"{_baseUrl}/api/orders");
 
             // Assert
             Assert.True(response.IsSuccessStatusCode);
@@ -114,7 +111,7 @@ namespace EcommerceAPI.Tests.Integration
             {
                 // Act
                 var startTime = DateTime.UtcNow;
-                var response = await _client.GetAsync(endpoint);
+                var response = await _client.GetAsync($"{_baseUrl}{endpoint}");
                 var endTime = DateTime.UtcNow;
                 var responseTime = (endTime - startTime).TotalMilliseconds;
 
@@ -134,7 +131,7 @@ namespace EcommerceAPI.Tests.Integration
             // Act
             for (int i = 0; i < concurrentRequests; i++)
             {
-                tasks.Add(_client.GetAsync("/api/health"));
+                tasks.Add(_client.GetAsync($"{_baseUrl}/api/health"));
             }
 
             var responses = await Task.WhenAll(tasks);

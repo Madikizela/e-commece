@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Automated Test Results - development</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .summary { display: flex; gap: 20px; margin: 20px 0; }
+        .metric { background: #e8f4fd; padding: 15px; border-radius: 5px; text-align: center; }
+        .passed { background: #d4edda; }
+        .failed { background: #f8d7da; }
+        .skipped { background: #fff3cd; }
+        .suite { margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 Automated Test Results</h1>
+        <p><strong>Environment:</strong> development</p>
+        <p><strong>API URL:</strong> http://localhost:5222</p>
+        <p><strong>Duration:</strong> 0.27 minutes</p>
+        <p><strong>Generated:</strong> 03/13/2026 17:52:34</p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <h3>Total Tests</h3>
+            <h2>6</h2>
+        </div>
+        <div class="metric passed">
+            <h3>Passed</h3>
+            <h2>5</h2>
+        </div>
+        <div class="metric failed">
+            <h3>Failed</h3>
+            <h2>1</h2>
+        </div>
+        <div class="metric skipped">
+            <h3>Skipped</h3>
+            <h2>0</h2>
+        </div>
+    </div>
+    
+    <h2>Test Suites</h2>    <div class="suite passed">
+        <h3>API Health Checks</h3>
+        <p>Passed: 1 | Failed: 0 | Skipped: 0 | Duration: 0.21s</p>
+        <ul><li>✅ /api/health: PASSED</li><li>✅ /api/health/detailed: PASSED</li><li>✅ /api/health/ready: PASSED</li><li>✅ /api/health/live: PASSED</li></ul></div>    <div class="suite passed">
+        <h3>Backend Unit Tests</h3>
+        <p>Passed: 1 | Failed: 0 | Skipped: 0 | Duration: 1.42s</p>
+        <ul><li>All unit tests passed</li></ul></div>    <div class="suite failed">
+        <h3>Backend Integration Tests</h3>
+        <p>Passed: 0 | Failed: 1 | Skipped: 0 | Duration: 0s</p>
+        <ul><li>Build failed</li></ul></div>    <div class="suite passed">
+        <h3>Frontend Unit Tests</h3>
+        <p>Passed: 1 | Failed: 0 | Skipped: 0 | Duration: 6.37s</p>
+        <ul><li>All frontend tests passed</li></ul></div>    <div class="suite passed">
+        <h3>Frontend E2E Tests</h3>
+        <p>Passed: 1 | Failed: 0 | Skipped: 0 | Duration: 4.63s</p>
+        <ul><li>All E2E tests passed</li></ul></div>    <div class="suite passed">
+        <h3>Performance Tests</h3>
+        <p>Passed: 1 | Failed: 0 | Skipped: 0 | Duration: 0.11s</p>
+        <ul><li>Endpoint /api/health: 4.88ms ✅</li><li>Endpoint /api/health/ready: 41.86ms ✅</li><li>Endpoint /api/products: 45.54ms ✅</li><li>Endpoint /api/categories: 7.35ms ✅</li></ul></div></body></html>

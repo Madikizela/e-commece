@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
+// Add fetch polyfill for Node.js environment
+if (!globalThis.fetch) {
+  const { fetch, Headers, Request, Response } = await import('undici');
+  Object.assign(globalThis, { fetch, Headers, Request, Response });
+}
+
 // E2E Health Check Tests
 describe('E2E Health Check Tests', () => {
   const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:5222';
@@ -14,73 +20,139 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify API health endpoint is accessible', async () => {
-    const response = await fetch(`${API_BASE_URL}/api/health`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      
+      if (!response) {
+        throw new Error('No response received from API');
+      }
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe('healthy');
-    expect(data.timestamp).toBeDefined();
-    expect(data.version).toBeDefined();
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.status).toBe('healthy');
+      expect(data.timestamp).toBeDefined();
+      expect(data.version).toBeDefined();
+    } catch (error) {
+      console.error('Health endpoint test failed:', error);
+      throw error;
+    }
   });
 
   it('should verify detailed health check returns comprehensive status', async () => {
-    const response = await fetch(`${API_BASE_URL}/api/health/detailed`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health/detailed`);
+      
+      if (!response) {
+        throw new Error('No response received from detailed health API');
+      }
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe('healthy');
-    expect(data.checks).toBeDefined();
-    expect(data.checks.database).toBeDefined();
-    expect(data.checks.memory).toBeDefined();
-    expect(data.checks.disk).toBeDefined();
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.status).toBe('healthy');
+      expect(data.checks).toBeDefined();
+      expect(data.checks.database).toBeDefined();
+      expect(data.checks.memory).toBeDefined();
+      expect(data.checks.disk).toBeDefined();
+    } catch (error) {
+      console.error('Detailed health endpoint test failed:', error);
+      throw error;
+    }
   });
 
   it('should verify readiness endpoint confirms API is ready', async () => {
-    const response = await fetch(`${API_BASE_URL}/api/health/ready`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health/ready`);
+      
+      if (!response) {
+        throw new Error('No response received from readiness API');
+      }
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe('ready');
-    expect(data.message).toContain('ready to serve traffic');
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.status).toBe('ready');
+      expect(data.message).toContain('ready to serve traffic');
+    } catch (error) {
+      console.error('Readiness endpoint test failed:', error);
+      throw error;
+    }
   });
 
   it('should verify liveness endpoint shows API is alive', async () => {
-    const response = await fetch(`${API_BASE_URL}/api/health/live`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health/live`);
+      
+      if (!response) {
+        throw new Error('No response received from liveness API');
+      }
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe('alive');
-    expect(data.uptime).toBeGreaterThan(0);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.status).toBe('alive');
+      expect(data.uptime).toBeGreaterThan(0);
+    } catch (error) {
+      console.error('Liveness endpoint test failed:', error);
+      throw error;
+    }
   });
 
   it('should verify API response times are acceptable', async () => {
-    const startTime = Date.now();
-    const response = await fetch(`${API_BASE_URL}/api/health`);
-    const endTime = Date.now();
-    const responseTime = endTime - startTime;
+    try {
+      const startTime = Date.now();
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
 
-    expect(response.status).toBe(200);
-    expect(responseTime).toBeLessThan(1000); // Less than 1 second
+      if (!response) {
+        throw new Error('No response received for performance test');
+      }
+
+      expect(response.status).toBe(200);
+      expect(responseTime).toBeLessThan(1000); // Less than 1 second
+    } catch (error) {
+      console.error('Performance test failed:', error);
+      throw error;
+    }
   });
 
   it('should handle concurrent requests gracefully', async () => {
-    const concurrentRequests = 5;
-    const promises = Array(concurrentRequests).fill(null).map(() => 
-      fetch(`${API_BASE_URL}/api/health`)
-    );
+    try {
+      const concurrentRequests = 5;
+      const promises = Array(concurrentRequests).fill(null).map(() => 
+        fetch(`${API_BASE_URL}/api/health`)
+      );
 
-    const responses = await Promise.all(promises);
-    
-    responses.forEach(response => {
-      expect(response.status).toBe(200);
-    });
+      const responses = await Promise.all(promises);
+      
+      responses.forEach((response, index) => {
+        if (!response) {
+          throw new Error(`No response received for concurrent request ${index + 1}`);
+        }
+        expect(response.status).toBe(200);
+      });
+    } catch (error) {
+      console.error('Concurrent requests test failed:', error);
+      throw error;
+    }
   });
 
   it('should verify CORS headers are properly configured', async () => {
-    const response = await fetch(`${API_BASE_URL}/api/health`);
-    
-    expect(response.status).toBe(200);
-    // Note: In a real E2E test, you might check for specific CORS headers
-    // depending on your CORS configuration
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      
+      if (!response) {
+        throw new Error('No response received for CORS test');
+      }
+
+      expect(response.status).toBe(200);
+      // Note: In a real E2E test, you might check for specific CORS headers
+      // depending on your CORS configuration
+    } catch (error) {
+      console.error('CORS test failed:', error);
+      throw error;
+    }
   });
 });

@@ -1,41 +1,15 @@
-import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import '@testing-library/jest-dom';
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-})
+// Global test setup
+beforeAll(() => {
+  // Setup global test environment
+  console.log('🧪 Test environment initialized');
+});
 
-// Mock fetch
-global.fetch = vi.fn()
+afterAll(() => {
+  // Cleanup after all tests
+  console.log('🧪 Test environment cleaned up');
+});
 
-// Mock window.location
-Object.defineProperty(window, 'location', {
-  value: {
-    href: 'http://localhost:3000',
-    pathname: '/',
-    search: '',
-    hash: '',
-    assign: vi.fn(),
-    replace: vi.fn(),
-    reload: vi.fn(),
-  },
-  writable: true,
-})
-
-// Mock console methods to reduce noise in tests
-global.console = {
-  ...console,
-  log: vi.fn(),
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}
+// Mock environment variables for tests
+process.env.VITE_API_URL = process.env.VITE_API_URL || 'http://localhost:5222';
