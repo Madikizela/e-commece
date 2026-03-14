@@ -12,7 +12,7 @@
     "test:run": "vitest run",
     "test:unit": "vitest run src/test/components/ src/test/services/",
     "test:ui": "vitest --ui",
-    "test:e2e": "vitest run src/test/e2e/",
+    "test:e2e": "vitest run src/e2e-tests/ --config vitest.config.e2e.ts",
     "test:watch": "vitest --watch",
     "coverage": "vitest run --coverage"
   },
