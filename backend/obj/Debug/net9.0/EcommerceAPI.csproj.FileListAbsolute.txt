@@ -17,12 +17,3 @@ C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Swashbuckle.AspNetCore
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\madik\Desktop\e-commece\backend\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.csproj.AssemblyReference.cache
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\rpswa.dswa.cache.json
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.AssemblyInfoInputs.cache
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.AssemblyInfo.cs
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.csproj.CoreCompileInputs.cache
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\madik\Desktop\e-commece\backend\obj\Debug\net9.0\EcommerceAPI.sourcelink.json

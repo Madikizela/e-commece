@@ -1,129 +1,272 @@
+# Docker Compose Production Configuration for CD Testing Rules
+# Implements production-grade automation rules and deployment strategies
+
 version: '3.8'
 
 services:
+  # CD Rule: Production backend with strict quality gates
+  backend:
+    image: ecommerce-backend:${VERSION:-latest}
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # CD Rule: Production performance thresholds (strict)
+      - CD_MAX_RESPONSE_TIME_MS=300
+      - CD_MAX_ERROR_RATE_PERCENT=0.5
+      - CD_MIN_AVAILABILITY_PERCENT=99.9
+      - CD_MAX_CPU_USAGE_PERCENT=60
+      - CD_MAX_MEMORY_USAGE_PERCENT=70
+      - CD_HEALTH_CHECK_INTERVAL=10
+      - CD_ROLLBACK_THRESHOLD_FAILURES=2
+      - CD_ENVIRONMENT=production
+      - CD_QUALITY_GATE_STRICT=true
+      - CD_SECURITY_SCAN_ENABLED=true
+      - CD_MONITORING_LEVEL=full
+    # CD Rule: Production resource limits (optimized)
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 768M
+          cpus: '0.75'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 2
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        monitor: 60s
+        max_failure_ratio: 0.1
+      rollback_config:
+        parallelism: 1
+        delay: 0s
+        failure_action: pause
+        monitor: 30s
+    # CD Rule: Production health checks (aggressive)
+    healthcheck:
+      test: |
+        curl -f http://localhost:8080/api/health || exit 1
+        curl -f http://localhost:8080/api/health/ready || exit 1
+        curl -f http://localhost:8080/api/health/live || exit 1
+        curl -f http://localhost:8080/api/health/detailed || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 2
+      start_period: 30s
+    labels:
+      - "cd.environment=production"
+      - "cd.quality.gate.strict=true"
+      - "cd.rollback.auto=true"
+      - "cd.security.scan=required"
+      - "cd.performance.sla=critical"
+      - "cd.monitoring.level=full"
+      - "cd.deployment.strategy=blue-green"
+
+  # CD Rule: Production frontend with performance monitoring
+  frontend:
+    image: ecommerce-frontend:${VERSION:-latest}
+    environment:
+      - NODE_ENV=production
+      - CD_PERFORMANCE_MONITORING=true
+      - CD_ERROR_TRACKING=true
+      - CD_ENVIRONMENT=production
+      - CD_CDN_ENABLED=true
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 2
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+    # CD Rule: Production frontend health checks
+    healthcheck:
+      test: |
+        wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+        wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 2
+    labels:
+      - "cd.environment=production"
+      - "cd.quality.gate.strict=true"
+      - "cd.performance.monitoring=critical"
+      - "cd.deployment.strategy=rolling"
+
+  # CD Rule: Production database with backup and monitoring
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ecommerce_prod
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      - POSTGRES_DB=ecommerce_prod
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
+      - ./backups:/backups:rw
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 300s
+    # CD Rule: Production database health checks
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
-
-  backend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/backend:main
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ecommerce_prod;Username=postgres;Password=${POSTGRES_PASSWORD}
-      - JWT__SecretKey=${JWT_SECRET_KEY}
-      - JWT__Issuer=EcommerceAPI
-      - JWT__Audience=EcommerceAPI
-      - EMAIL__HOST=${EMAIL_HOST}
-      - EMAIL__PORT=${EMAIL_PORT}
-      - EMAIL__USERNAME=${EMAIL_USERNAME}
-      - EMAIL__PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL__FROM=${EMAIL_FROM}
-    ports:
-      - "5222:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
+      timeout: 3s
       retries: 3
-    restart: unless-stopped
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
-      update_config:
-        parallelism: 1
-        delay: 10s
-        order: start-first
+      start_period: 60s
+    labels:
+      - "cd.environment=production"
+      - "cd.component=database"
+      - "cd.backup.enabled=true"
+      - "cd.monitoring.critical=true"
 
-  frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:main
+  # CD Rule: Production monitoring stack (comprehensive)
+  monitoring:
+    image: prom/prometheus:latest
     environment:
-      - NODE_ENV=production
-      - VITE_API_URL=${API_URL}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      - PROMETHEUS_RETENTION_TIME=30d
+      - PROMETHEUS_SCRAPE_INTERVAL=10s
+    volumes:
+      - ./monitoring/production-prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_prod_data:/prometheus
     deploy:
-      replicas: 2
+      replicas: 1
       resources:
         limits:
-          cpus: '1.0'
           memory: 1G
-        reservations:
           cpus: '0.5'
-          memory: 512M
-      update_config:
-        parallelism: 1
-        delay: 10s
+    labels:
+      - "cd.environment=production"
+      - "cd.monitoring.level=comprehensive"
+      - "cd.alerting.enabled=true"
 
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_prod_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-
-  nginx:
-    image: nginx:alpine
+  # CD Rule: Production alertmanager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: cd-alertmanager-prod
     ports:
-      - "80:80"
-      - "443:443"
+      - "9093:9093"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     deploy:
+      replicas: 1
       resources:
         limits:
-          cpus: '0.5'
           memory: 256M
+          cpus: '0.25'
+    labels:
+      - "cd.environment=production"
+      - "cd.alerting=critical"
+      - "cd.notification.enabled=true"
 
+  # CD Rule: Production log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: cd-loki-prod
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_prod_data:/loki
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    labels:
+      - "cd.environment=production"
+      - "cd.logging=centralized"
+      - "cd.audit.enabled=true"
+
+  # CD Rule: Production backup service
+  backup:
+    image: postgres:15-alpine
+    container_name: cd-backup-prod
+    environment:
+      - PGPASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - ./backups:/backups:rw
+      - ./scripts/backup.sh:/backup.sh:ro
+    command: |
+      sh -c "
+        while true; do
+          /backup.sh
+          sleep 3600
+        done
+      "
+    depends_on:
+      - postgres
+    labels:
+      - "cd.environment=production"
+      - "cd.backup.automated=true"
+      - "cd.recovery.enabled=true"
+
+# CD Rule: Production secrets management
+secrets:
+  postgres_password:
+    external: true
+  jwt_secret:
+    external: true
+  email_password:
+    external: true
+
+# CD Rule: Production volumes with backup
 volumes:
   postgres_prod_data:
-  redis_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecommerce/data/postgres
+  prometheus_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecommerce/data/prometheus
+  loki_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/ecommerce/data/loki
+
+# CD Rule: Production network configuration (secure)
+networks:
+  default:
+    driver: overlay
+    attachable: false
+    labels:
+      - "cd.network=production"
+      - "cd.security.level=maximum"
+      - "cd.encryption=enabled"

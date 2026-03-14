@@ -1,0 +1,148 @@
+# CD Testing Rules - Alert Rules Configuration
+# Implements automated rollback triggers and monitoring thresholds
+
+groups:
+  # CD Rule: Application Performance Alerts
+  - name: cd_performance_rules
+    rules:
+      # Response time threshold (< 500ms)
+      - alert: HighResponseTime
+        expr: http_request_duration_seconds{quantile="0.95"} > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          cd_rule: performance_threshold
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s (threshold: 0.5s)"
+          
+      # Error rate threshold (< 1%)
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+          cd_rule: error_rate_threshold
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}% (threshold: 1%)"
+
+  # CD Rule: Resource Usage Alerts
+  - name: cd_resource_rules
+    rules:
+      # CPU usage threshold (< 70%)
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 70
+        for: 3m
+        labels:
+          severity: warning
+          cd_rule: cpu_threshold
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% (threshold: 70%)"
+          
+      # Memory usage threshold (< 80%)
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 80
+        for: 3m
+        labels:
+          severity: warning
+          cd_rule: memory_threshold
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% (threshold: 80%)"
+
+  # CD Rule: Health Check Alerts
+  - name: cd_health_rules
+    rules:
+      # Service availability (> 99.9%)
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          cd_rule: availability_threshold
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute"
+          
+      # Health check failures (> 3 consecutive)
+      - alert: HealthCheckFailure
+        expr: increase(health_check_failures_total[5m]) > 3
+        for: 0m
+        labels:
+          severity: critical
+          cd_rule: rollback_trigger
+        annotations:
+          summary: "Multiple health check failures"
+          description: "{{ $value }} health check failures in 5 minutes (threshold: 3)"
+
+  # CD Rule: Rollback Triggers
+  - name: cd_rollback_rules
+    rules:
+      # Automatic rollback trigger
+      - alert: AutomaticRollbackRequired
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m]) > 0.10 or
+            http_request_duration_seconds{quantile="0.95"} > 5 or
+            increase(health_check_failures_total[5m]) > 3
+          )
+        for: 0m
+        labels:
+          severity: critical
+          cd_rule: automatic_rollback
+          action: rollback
+        annotations:
+          summary: "Automatic rollback triggered"
+          description: "Critical thresholds exceeded - initiating automatic rollback"
+          
+  # CD Rule: Security Alerts
+  - name: cd_security_rules
+    rules:
+      # Security scan failures
+      - alert: SecurityScanFailure
+        expr: security_scan_vulnerabilities_high > 0
+        for: 0m
+        labels:
+          severity: critical
+          cd_rule: security_gate
+        annotations:
+          summary: "High severity security vulnerabilities found"
+          description: "{{ $value }} high severity vulnerabilities detected"
+          
+      # Authentication failures
+      - alert: HighAuthenticationFailures
+        expr: rate(authentication_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          cd_rule: security_monitoring
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per second"
+
+  # CD Rule: Quality Gate Alerts
+  - name: cd_quality_rules
+    rules:
+      # Code coverage threshold
+      - alert: LowCodeCoverage
+        expr: code_coverage_percentage < 70
+        for: 0m
+        labels:
+          severity: warning
+          cd_rule: quality_gate
+        annotations:
+          summary: "Code coverage below threshold"
+          description: "Code coverage is {{ $value }}% (threshold: 70%)"
+          
+      # Build failures
+      - alert: BuildFailure
+        expr: build_status != 1
+        for: 0m
+        labels:
+          severity: critical
+          cd_rule: quality_gate
+        annotations:
+          summary: "Build failure detected"
+          description: "Build status: {{ $value }} (expected: 1)"

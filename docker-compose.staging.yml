@@ -1,94 +1,140 @@
+# Docker Compose Staging Configuration for CD Testing Rules
+# Implements staging-specific automation rules and quality gates
+
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: ecommerce_staging
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_staging_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/backend:staging
     environment:
+      # CD Rule: Staging environment thresholds (production-like)
       - ASPNETCORE_ENVIRONMENT=Staging
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ecommerce_staging;Username=postgres;Password=${POSTGRES_PASSWORD}
-      - JWT__SecretKey=${JWT_SECRET_KEY}
-      - JWT__Issuer=EcommerceAPI
-      - JWT__Audience=EcommerceAPI
-      - EMAIL__HOST=${EMAIL_HOST}
-      - EMAIL__PORT=${EMAIL_PORT}
-      - EMAIL__USERNAME=${EMAIL_USERNAME}
-      - EMAIL__PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL__FROM=${EMAIL_FROM}
-    ports:
-      - "5222:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      - CD_MAX_RESPONSE_TIME_MS=500
+      - CD_MAX_ERROR_RATE_PERCENT=1
+      - CD_MIN_AVAILABILITY_PERCENT=99.5
+      - CD_HEALTH_CHECK_INTERVAL=30
+      - CD_ROLLBACK_THRESHOLD_FAILURES=3
+      - CD_ENVIRONMENT=staging
+      - CD_QUALITY_GATE_STRICT=true
+      - CD_SECURITY_SCAN_ENABLED=true
+    # CD Rule: Staging resource limits (production-like)
     deploy:
       resources:
         limits:
-          cpus: '1.0'
           memory: 1G
+          cpus: '1.0'
         reservations:
-          cpus: '0.5'
           memory: 512M
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 300s
+    # CD Rule: Staging health checks (more frequent)
+    healthcheck:
+      test: |
+        curl -f http://localhost:8080/api/health || exit 1
+        curl -f http://localhost:8080/api/health/ready || exit 1
+        curl -f http://localhost:8080/api/health/live || exit 1
+        curl -f http://localhost:8080/api/health/detailed || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "cd.environment=staging"
+      - "cd.quality.gate.strict=true"
+      - "cd.rollback.auto=true"
+      - "cd.security.scan=required"
+      - "cd.performance.sla=strict"
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:staging
     environment:
       - NODE_ENV=staging
-      - VITE_API_URL=${API_URL}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+      - CD_PERFORMANCE_MONITORING=true
+      - CD_ERROR_TRACKING=true
+      - CD_ENVIRONMENT=staging
+    # CD Rule: Staging frontend health checks
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_staging_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      test: |
+        wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+        wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+      interval: 15s
       timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
+      retries: 3
+    labels:
+      - "cd.environment=staging"
+      - "cd.quality.gate.strict=true"
+      - "cd.performance.monitoring=enabled"
 
-volumes:
-  postgres_staging_data:
-  redis_staging_data:
+  # CD Rule: Staging-specific monitoring (full stack)
+  monitoring:
+    environment:
+      - PROMETHEUS_RETENTION_TIME=7d
+      - PROMETHEUS_SCRAPE_INTERVAL=15s
+    volumes:
+      - ./monitoring/staging-prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    labels:
+      - "cd.environment=staging"
+      - "cd.monitoring.level=full"
+
+  # CD Rule: Staging quality gate service (required)
+  quality-gate:
+    environment:
+      - SONAR_QUALITY_GATE_WAIT=true
+      - SONAR_QUALITY_GATE_TIMEOUT=300
+    labels:
+      - "cd.environment=staging"
+      - "cd.quality.gate=required"
+      - "cd.deployment.blocker=true"
+
+  # CD Rule: Staging security scanner (mandatory)
+  security-scanner:
+    profiles: [] # Always run in staging
+    environment:
+      - ZAP_BASELINE_TIMEOUT=300
+      - ZAP_FAIL_ON_WARN=true
+    labels:
+      - "cd.environment=staging"
+      - "cd.security.scan=mandatory"
+      - "cd.deployment.blocker=true"
+
+  # CD Rule: Staging performance tester (mandatory)
+  performance-tester:
+    profiles: [] # Always run in staging
+    environment:
+      - K6_VUS=50
+      - K6_DURATION=5m
+      - K6_FAIL_ON_THRESHOLD=true
+    labels:
+      - "cd.environment=staging"
+      - "cd.performance.test=mandatory"
+      - "cd.deployment.blocker=true"
+
+  # CD Rule: Staging integration test runner
+  integration-tester:
+    image: postman/newman:latest
+    container_name: cd-integration-tester
+    volumes:
+      - ./integration-tests:/etc/newman:ro
+      - ./test-reports:/reports:rw
+    command: run /etc/newman/staging-collection.json --environment /etc/newman/staging-environment.json --reporters cli,json --reporter-json-export /reports/integration-results.json
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      - "cd.component=integration-test"
+      - "cd.environment=staging"
+      - "cd.test.type=integration"
+      - "cd.deployment.blocker=true"
+
+# CD Rule: Staging network configuration (more secure)
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+    labels:
+      - "cd.network=staging"
+      - "cd.security.level=high"

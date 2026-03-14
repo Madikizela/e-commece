@@ -1,0 +1,44 @@
+# Docker Compose CI Configuration
+# Implements Continuous Integration automation rules
+
+version: '3.8'
+
+services:
+  # CI Rule: Automated build and test pipeline
+  ci-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    container_name: ci-pipeline
+    environment:
+      # CI Rule: CI environment configuration
+      - CI=true
+      - NODE_ENV=test
+      - ASPNETCORE_ENVIRONMENT=Testing
+      - CI_BUILD_NUMBER=${BUILD_NUMBER:-local}
+      - CI_COMMIT_SHA=${COMMIT_SHA:-unknown}
+      - CI_BRANCH=${BRANCH:-development}
+      - CI_COVERAGE_THRESHOLD=70
+      - CI_QUALITY_GATE_WAIT=true
+    volumes:
+      - .:/workspace:ro
+      - ci_artifacts:/ci/artifacts
+      - ci_reports:/ci/reports
+    command: |
+      sh -c "
+        echo '🚀 CI Pipeline Started'
+        echo 'Build: ${CI_BUILD_NUMBER:-local}'
+        echo 'Branch: ${CI_BRANCH:-development}'
+        echo 'Commit: ${CI_COMMIT_SHA:-unknown}'
+        
+        /ci/validate.sh
+        
+        echo '✅ CI Pipeline Completed'
+      "
+    labels:
+      - "ci.pipeline=automated"
+      - "ci.stage=validation"
+
+volumes:
+  ci_artifacts:
+  ci_reports:

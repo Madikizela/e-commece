@@ -1,0 +1,69 @@
+# Docker Compose Override for CD Testing Rules
+# This file provides environment-specific configurations for automation rules
+
+version: '3.8'
+
+services:
+  # Development environment overrides
+  backend:
+    environment:
+      # CD Rule: Development-specific thresholds (more lenient)
+      - CD_MAX_RESPONSE_TIME_MS=1000
+      - CD_MAX_ERROR_RATE_PERCENT=5
+      - CD_HEALTH_CHECK_INTERVAL=60
+      - CD_ROLLBACK_THRESHOLD_FAILURES=5
+      - CD_ENVIRONMENT=development
+    # CD Rule: Development resource limits (higher for debugging)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+    # CD Rule: Development-specific labels
+    labels:
+      - "cd.environment=development"
+      - "cd.quality.gate.strict=false"
+      - "cd.rollback.auto=false"
+
+  frontend:
+    environment:
+      # CD Rule: Development frontend configuration
+      - CD_PERFORMANCE_MONITORING=false
+      - CD_ERROR_TRACKING=false
+      - CD_DEBUG_MODE=true
+    labels:
+      - "cd.environment=development"
+      - "cd.quality.gate.strict=false"
+
+  # CD Rule: Development-only services
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    labels:
+      - "cd.component=database-admin"
+      - "cd.environment=development"
+      - "cd.security.level=low"
+
+  # CD Rule: Development monitoring (lightweight)
+  dev-monitor:
+    image: prom/node-exporter:latest
+    container_name: cd-dev-monitor
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    labels:
+      - "cd.component=system-monitor"
+      - "cd.environment=development"

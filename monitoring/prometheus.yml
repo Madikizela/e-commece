@@ -1,0 +1,66 @@
+# Prometheus Configuration for CD Testing Rules
+# Implements monitoring automation rules from CD_TESTING_RULES.md
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# CD Rule: Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# CD Rule: Monitoring rules for quality gates
+rule_files:
+  - "alert_rules.yml"
+
+# CD Rule: Scrape configurations for all services
+scrape_configs:
+  # Backend API monitoring
+  - job_name: 'ecommerce-backend'
+    static_configs:
+      - targets: ['backend:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    # CD Rule: Performance thresholds
+    params:
+      max_response_time: ['500ms']
+      max_error_rate: ['1%']
+      max_cpu_usage: ['70%']
+      max_memory_usage: ['80%']
+
+  # Frontend monitoring
+  - job_name: 'ecommerce-frontend'
+    static_configs:
+      - targets: ['frontend:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Database monitoring
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Health check monitoring
+  - job_name: 'health-checks'
+    static_configs:
+      - targets: ['backend:8080']
+    metrics_path: '/api/health'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    # CD Rule: Health check validation
+    params:
+      format: ['prometheus']

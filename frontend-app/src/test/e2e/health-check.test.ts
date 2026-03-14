@@ -8,11 +8,29 @@ if (!globalThis.fetch) {
 
 // E2E Health Check Tests
 describe('E2E Health Check Tests', () => {
-  const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:5222';
+  const API_BASE_URL = process.env.VITE_API_URL || (process.env.CI ? 'http://localhost:5000' : 'http://localhost:5222');
 
   beforeAll(async () => {
+    console.log('🔧 E2E Test Setup');
+    console.log('API Base URL:', API_BASE_URL);
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('CI Mode:', process.env.CI ? 'true' : 'false');
+    
     // Wait for API to be ready
+    console.log('⏳ Waiting for API to be ready...');
     await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Test basic connectivity
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      if (response && response.ok) {
+        console.log('✅ API connectivity confirmed');
+      } else {
+        console.warn('⚠️ API connectivity issue detected');
+      }
+    } catch (error) {
+      console.warn('⚠️ API connectivity test failed:', error.message);
+    }
   });
 
   afterAll(async () => {
@@ -27,14 +45,15 @@ describe('E2E Health Check Tests', () => {
         throw new Error('No response received from API');
       }
 
-      const data = await response.json();
-
       expect(response.status).toBe(200);
+      
+      const data = await response.json();
       expect(data.status).toBe('healthy');
       expect(data.timestamp).toBeDefined();
       expect(data.version).toBeDefined();
     } catch (error) {
       console.error('Health endpoint test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -47,9 +66,9 @@ describe('E2E Health Check Tests', () => {
         throw new Error('No response received from detailed health API');
       }
 
-      const data = await response.json();
-
       expect(response.status).toBe(200);
+      
+      const data = await response.json();
       expect(data.status).toBe('healthy');
       expect(data.checks).toBeDefined();
       expect(data.checks.database).toBeDefined();
@@ -57,6 +76,7 @@ describe('E2E Health Check Tests', () => {
       expect(data.checks.disk).toBeDefined();
     } catch (error) {
       console.error('Detailed health endpoint test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -69,13 +89,14 @@ describe('E2E Health Check Tests', () => {
         throw new Error('No response received from readiness API');
       }
 
-      const data = await response.json();
-
       expect(response.status).toBe(200);
+      
+      const data = await response.json();
       expect(data.status).toBe('ready');
       expect(data.message).toContain('ready to serve traffic');
     } catch (error) {
       console.error('Readiness endpoint test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -88,13 +109,14 @@ describe('E2E Health Check Tests', () => {
         throw new Error('No response received from liveness API');
       }
 
-      const data = await response.json();
-
       expect(response.status).toBe(200);
+      
+      const data = await response.json();
       expect(data.status).toBe('alive');
       expect(data.uptime).toBeGreaterThan(0);
     } catch (error) {
       console.error('Liveness endpoint test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -114,6 +136,7 @@ describe('E2E Health Check Tests', () => {
       expect(responseTime).toBeLessThan(1000); // Less than 1 second
     } catch (error) {
       console.error('Performance test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -135,6 +158,7 @@ describe('E2E Health Check Tests', () => {
       });
     } catch (error) {
       console.error('Concurrent requests test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
@@ -152,6 +176,7 @@ describe('E2E Health Check Tests', () => {
       // depending on your CORS configuration
     } catch (error) {
       console.error('CORS test failed:', error);
+      console.error('API URL:', API_BASE_URL);
       throw error;
     }
   });
