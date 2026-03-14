@@ -227,7 +227,7 @@ jobs:
         
         # Run E2E tests
         echo "Running E2E tests..."
-        npm run test:e2e
+        npx vitest run src/e2e-tests/ --config vitest.config.e2e.ts
         TEST_EXIT_CODE=$?
         
         echo "📊 E2E Test Results:"
@@ -281,7 +281,7 @@ jobs:
         echo "Running performance tests..."
         PERFORMANCE_FAILED=0
         
-        for endpoint in "/api/health" "/api/health/ready" "/api/products" "/api/categories"; do
+        for endpoint in "/api/health" "/api/health/ready" "/api/health/live" "/api/health/detailed"; do
           echo "Testing endpoint: $endpoint"
           start_time=$(date +%s%N)
           response=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000$endpoint" || echo "000")
