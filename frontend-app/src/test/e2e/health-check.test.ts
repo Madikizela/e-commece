@@ -10,7 +10,15 @@ if (!globalThis.fetch) {
 describe('E2E Health Check Tests', () => {
   const API_BASE_URL = process.env.VITE_API_URL || (process.env.CI ? 'http://localhost:5000' : 'http://localhost:5222');
 
+  // Skip E2E tests if running in unit test context (no backend server)
+  const shouldSkipE2E = process.env.SKIP_E2E_TESTS === 'true';
+
   beforeAll(async () => {
+    if (shouldSkipE2E) {
+      console.log('🚫 E2E tests skipped - running in unit test context');
+      return;
+    }
+    
     console.log('🔧 E2E Test Setup');
     console.log('API Base URL:', API_BASE_URL);
     console.log('Environment:', process.env.NODE_ENV);
@@ -38,6 +46,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify API health endpoint is accessible', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health`);
       
@@ -59,6 +72,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify detailed health check returns comprehensive status', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health/detailed`);
       
@@ -82,6 +100,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify readiness endpoint confirms API is ready', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health/ready`);
       
@@ -102,6 +125,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify liveness endpoint shows API is alive', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health/live`);
       
@@ -122,6 +150,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify API response times are acceptable', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const startTime = Date.now();
       const response = await fetch(`${API_BASE_URL}/api/health`);
@@ -142,6 +175,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should handle concurrent requests gracefully', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const concurrentRequests = 5;
       const promises = Array(concurrentRequests).fill(null).map(() => 
@@ -164,6 +202,11 @@ describe('E2E Health Check Tests', () => {
   });
 
   it('should verify CORS headers are properly configured', async () => {
+    if (shouldSkipE2E) {
+      console.log('✅ E2E test skipped - unit test context');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health`);
       

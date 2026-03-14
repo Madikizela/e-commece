@@ -186,6 +186,7 @@ jobs:
       working-directory: ./frontend-app
       env:
         CI: true
+        SKIP_E2E_TESTS: true
     
     - name: Run Frontend E2E Tests
       if: matrix.test-suite == 'frontend-e2e'
@@ -244,6 +245,7 @@ jobs:
       env:
         CI: true
         VITE_API_URL: http://localhost:5000
+        E2E_TESTS_ENABLED: true
     
     - name: Run Performance Tests
       if: matrix.test-suite == 'performance'
