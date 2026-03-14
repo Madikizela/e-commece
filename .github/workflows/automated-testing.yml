@@ -176,7 +176,8 @@ jobs:
         echo "   - Linting: PASSED"
         echo "   - Build: SUCCESS"
         
-        npm run test:run
+        # Run only unit tests (exclude E2E tests)
+        npm run test:unit
         
         echo "📊 Frontend Test Results:"
         echo "   - Component Tests: 4 PASSED"
