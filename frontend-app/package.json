@@ -10,7 +10,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:unit": "vitest run --exclude=\"**/e2e/**\"",
+    "test:unit": "vitest run src/test/components/ src/test/services/",
     "test:ui": "vitest --ui",
     "test:e2e": "vitest run src/test/e2e/",
     "test:watch": "vitest --watch",
